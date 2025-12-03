@@ -27,6 +27,12 @@ type Model struct {
 	defaults models.Options
 }
 
+// 确保Model实现了所需的接口
+var (
+	_ models.LLM       = (*Model)(nil)
+	_ models.ChatModel = (*Model)(nil)
+)
+
 // NewModel 创建新的OpenAI模型实例
 func NewModel(apiKey, modelID string, options ...models.Option) *Model {
 	defaults := models.DefaultOptions()
@@ -169,6 +175,134 @@ func (m *Model) GenerateStream(ctx context.Context, prompt string, options ...mo
 				FinishReason: completions[0].FinishReason,
 				Done:         true,
 			}
+		}
+	}()
+
+	return resultChan, nil
+}
+
+// chatRequest 是OpenAI聊天接口的请求体
+type chatRequest struct {
+	Model            string           `json:"model"`
+	Messages         []models.Message `json:"messages"`
+	MaxTokens        int              `json:"max_tokens"`
+	Temperature      float64          `json:"temperature"`
+	TopP             float64          `json:"top_p"`
+	FrequencyPenalty float64          `json:"frequency_penalty"`
+	PresencePenalty  float64          `json:"presence_penalty"`
+	Stop             []string         `json:"stop,omitempty"`
+	Stream           bool             `json:"stream,omitempty"`
+}
+
+// chatResponse 是OpenAI聊天接口的响应体
+type chatResponse struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	Model   string `json:"model"`
+	Choices []struct {
+		Index        int            `json:"index"`
+		Message      models.Message `json:"message"`
+		FinishReason string         `json:"finish_reason"`
+	} `json:"choices"`
+	Usage struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
+}
+
+// Chat 实现ChatModel接口，进行聊天对话
+func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...models.Option) (models.ChatResponse, error) {
+	opts := m.defaults
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	if len(messages) == 0 {
+		return models.ChatResponse{}, errors.New("no messages provided")
+	}
+
+	// 准备请求
+	req := chatRequest{
+		Model:            m.modelID,
+		Messages:         messages,
+		MaxTokens:        opts.MaxTokens,
+		Temperature:      opts.Temperature,
+		TopP:             opts.TopP,
+		FrequencyPenalty: opts.FrequencyPenalty,
+		PresencePenalty:  opts.PresencePenalty,
+		Stop:             opts.Stop,
+	}
+
+	// 编码请求
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		return models.ChatResponse{}, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// 创建HTTP请求
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", openaiChatURL, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return models.ChatResponse{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+m.apiKey)
+
+	// 发送请求
+	resp, err := m.client.Do(httpReq)
+	if err != nil {
+		return models.ChatResponse{}, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return models.ChatResponse{}, fmt.Errorf("API error: %s - %s", resp.Status, string(body))
+	}
+
+	// 解析响应
+	var respBody chatResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
+		return models.ChatResponse{}, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// 处理结果
+	if len(respBody.Choices) == 0 {
+		return models.ChatResponse{}, errors.New("no response choices received")
+	}
+
+	choice := respBody.Choices[0]
+	return models.ChatResponse{
+		Message:      choice.Message,
+		TokensUsed:   respBody.Usage.TotalTokens,
+		FinishReason: choice.FinishReason,
+	}, nil
+}
+
+// ChatStream 实现流式聊天接口
+func (m *Model) ChatStream(ctx context.Context, messages []models.Message, options ...models.Option) (<-chan models.ChatChunk, error) {
+	// 简化实现，实际应该支持SSE流式响应
+	resultChan := make(chan models.ChatChunk, 1)
+
+	go func() {
+		defer close(resultChan)
+
+		response, err := m.Chat(ctx, messages, options...)
+		if err != nil {
+			resultChan <- models.ChatChunk{
+				Delta:        models.Message{},
+				Done:         true,
+				FinishReason: "error",
+			}
+			return
+		}
+
+		resultChan <- models.ChatChunk{
+			Delta:        response.Message,
+			Done:         true,
+			FinishReason: response.FinishReason,
 		}
 	}()
 
