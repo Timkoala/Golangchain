@@ -9,27 +9,27 @@ type Option func(*Options)
 
 // Options 包含所有模型调用选项
 type Options struct {
-	MaxTokens       int
-	Temperature     float64
-	TopP            float64
+	MaxTokens        int
+	Temperature      float64
+	TopP             float64
 	FrequencyPenalty float64
-	PresencePenalty float64
-	Stop            []string
-	Timeout         int
+	PresencePenalty  float64
+	Stop             []string
+	Timeout          int
 }
 
 // Completion 代表LLM的完成响应
 type Completion struct {
-	Text       string
+	Text         string
 	FinishReason string
-	TokensUsed  int
+	TokensUsed   int
 }
 
 // CompletionChunk 代表流式响应的一个片段
 type CompletionChunk struct {
-	Text        string
+	Text         string
 	FinishReason string
-	Done        bool
+	Done         bool
 }
 
 // LLM 定义基础大语言模型接口

@@ -14,7 +14,7 @@ const (
 	RoleUser Role = "user"
 	// RoleAssistant 表示助手消息
 	RoleAssistant Role = "assistant"
-	// RoleFuction 表示函数调用结果
+	// RoleFunction 表示函数调用结果
 	RoleFunction Role = "function"
 )
 
@@ -34,8 +34,8 @@ type ChatResponse struct {
 
 // ChatChunk 表示流式聊天响应的片段
 type ChatChunk struct {
-	Delta       Message
-	Done        bool
+	Delta        Message
+	Done         bool
 	FinishReason string
 }
 
