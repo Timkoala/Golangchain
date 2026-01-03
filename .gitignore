@@ -1,0 +1,42 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+/bin/
+/dist/
+
+# Demo program (keep locally, exclude from repo)
+cmd/demo/
+
+# Internal documentation (keep locally, exclude from repo)
+docs/project_implementation.md
+docs/code_audit_report.md
+docs/tech_stack_selection.md
+docs/README.md
+
+# Misc
+node-installer.msi
+package.json
