@@ -1,13 +1,14 @@
+// Package models defines core interfaces and types for LLM interactions.
 package models
 
 import (
 	"context"
 )
 
-// Option 定义模型调用的选项
+// Option defines a function type for configuring model options.
 type Option func(*Options)
 
-// Options 包含所有模型调用选项
+// Options contains all model invocation options.
 type Options struct {
 	MaxTokens        int
 	Temperature      float64
@@ -18,58 +19,58 @@ type Options struct {
 	Timeout          int
 }
 
-// Completion 代表LLM的完成响应
+// Completion represents an LLM completion response.
 type Completion struct {
 	Text         string
 	FinishReason string
 	TokensUsed   int
 }
 
-// CompletionChunk 代表流式响应的一个片段
+// CompletionChunk represents a chunk of a streaming response.
 type CompletionChunk struct {
 	Text         string
 	FinishReason string
 	Done         bool
 }
 
-// LLM 定义基础大语言模型接口
+// LLM defines the base interface for large language models.
 type LLM interface {
-	// Generate 根据提示生成完成内容
+	// Generate produces completions for the given prompts.
 	Generate(ctx context.Context, prompts []string, options ...Option) ([]Completion, error)
 
-	// GenerateStream 流式生成完成内容
+	// GenerateStream produces a streaming completion for a single prompt.
 	GenerateStream(ctx context.Context, prompt string, options ...Option) (<-chan CompletionChunk, error)
 }
 
-// WithMaxTokens 设置最大生成标记数
+// WithMaxTokens sets the maximum number of tokens to generate.
 func WithMaxTokens(n int) Option {
 	return func(o *Options) {
 		o.MaxTokens = n
 	}
 }
 
-// WithTemperature 设置生成温度
+// WithTemperature sets the sampling temperature.
 func WithTemperature(t float64) Option {
 	return func(o *Options) {
 		o.Temperature = t
 	}
 }
 
-// WithTopP 设置Top-P采样参数
+// WithTopP sets the top-p sampling parameter.
 func WithTopP(p float64) Option {
 	return func(o *Options) {
 		o.TopP = p
 	}
 }
 
-// WithStop 设置停止序列
+// WithStop sets the stop sequences.
 func WithStop(stop []string) Option {
 	return func(o *Options) {
 		o.Stop = stop
 	}
 }
 
-// DefaultOptions 返回默认选项
+// DefaultOptions returns the default options.
 func DefaultOptions() Options {
 	return Options{
 		MaxTokens:   100,

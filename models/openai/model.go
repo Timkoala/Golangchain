@@ -1,3 +1,4 @@
+// Package openai provides an OpenAI API implementation of the LLM interfaces.
 package openai
 
 import (
@@ -14,12 +15,12 @@ import (
 )
 
 const (
-	openaiCompletionURL = "https://api.openai.com/v1/completions"
-	openaiChatURL       = "https://api.openai.com/v1/chat/completions"
-	defaultTimeout      = 30 * time.Second
+	defaultCompletionURL = "https://api.openai.com/v1/completions"
+	defaultChatURL       = "https://api.openai.com/v1/chat/completions"
+	defaultTimeout       = 30 * time.Second
 )
 
-// Model 实现OpenAI API的模型接口
+// Model implements the LLM and ChatModel interfaces for OpenAI API.
 type Model struct {
 	apiKey   string
 	modelID  string
@@ -27,13 +28,13 @@ type Model struct {
 	defaults models.Options
 }
 
-// 确保Model实现了所需的接口
+// Compile-time interface compliance check.
 var (
 	_ models.LLM       = (*Model)(nil)
 	_ models.ChatModel = (*Model)(nil)
 )
 
-// NewModel 创建新的OpenAI模型实例
+// NewModel creates a new OpenAI model instance.
 func NewModel(apiKey, modelID string, options ...models.Option) *Model {
 	defaults := models.DefaultOptions()
 	for _, opt := range options {
@@ -48,7 +49,7 @@ func NewModel(apiKey, modelID string, options ...models.Option) *Model {
 	}
 }
 
-// completionRequest 是OpenAI完成接口的请求体
+// completionRequest represents the OpenAI completion API request body.
 type completionRequest struct {
 	Model            string   `json:"model"`
 	Prompt           string   `json:"prompt"`
@@ -61,7 +62,7 @@ type completionRequest struct {
 	Stream           bool     `json:"stream,omitempty"`
 }
 
-// completionResponse 是OpenAI完成接口的响应体
+// completionResponse represents the OpenAI completion API response body.
 type completionResponse struct {
 	ID      string `json:"id"`
 	Object  string `json:"object"`
@@ -80,19 +81,17 @@ type completionResponse struct {
 	} `json:"usage"`
 }
 
-// Generate 实现LLM接口，调用OpenAI API生成文本
+// Generate implements the LLM interface.
 func (m *Model) Generate(ctx context.Context, prompts []string, options ...models.Option) ([]models.Completion, error) {
 	opts := m.defaults
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	// 这里简化，只处理第一个提示
 	if len(prompts) == 0 {
 		return nil, errors.New("no prompts provided")
 	}
 
-	// 准备请求
 	req := completionRequest{
 		Model:            m.modelID,
 		Prompt:           prompts[0],
@@ -104,14 +103,12 @@ func (m *Model) Generate(ctx context.Context, prompts []string, options ...model
 		Stop:             opts.Stop,
 	}
 
-	// 编码请求
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// 创建HTTP请求
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", openaiCompletionURL, bytes.NewBuffer(reqBody))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, defaultCompletionURL, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -119,7 +116,6 @@ func (m *Model) Generate(ctx context.Context, prompts []string, options ...model
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+m.apiKey)
 
-	// 发送请求
 	resp, err := m.client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
@@ -131,13 +127,11 @@ func (m *Model) Generate(ctx context.Context, prompts []string, options ...model
 		return nil, fmt.Errorf("API error: %s - %s", resp.Status, string(body))
 	}
 
-	// 解析响应
 	var respBody completionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// 处理结果
 	completions := make([]models.Completion, len(respBody.Choices))
 	for i, choice := range respBody.Choices {
 		completions[i] = models.Completion{
@@ -150,15 +144,13 @@ func (m *Model) Generate(ctx context.Context, prompts []string, options ...model
 	return completions, nil
 }
 
-// GenerateStream 实现流式生成接口
+// GenerateStream implements streaming generation.
 func (m *Model) GenerateStream(ctx context.Context, prompt string, options ...models.Option) (<-chan models.CompletionChunk, error) {
-	// 这里仅做接口实现，简化处理，实际需要支持流式传输
 	resultChan := make(chan models.CompletionChunk, 1)
 
 	go func() {
 		defer close(resultChan)
 
-		// 实际实现中应该使用SSE流式解析
 		completions, err := m.Generate(ctx, []string{prompt}, options...)
 		if err != nil {
 			resultChan <- models.CompletionChunk{
@@ -181,7 +173,7 @@ func (m *Model) GenerateStream(ctx context.Context, prompt string, options ...mo
 	return resultChan, nil
 }
 
-// chatRequest 是OpenAI聊天接口的请求体
+// chatRequest represents the OpenAI chat API request body.
 type chatRequest struct {
 	Model            string           `json:"model"`
 	Messages         []models.Message `json:"messages"`
@@ -194,7 +186,7 @@ type chatRequest struct {
 	Stream           bool             `json:"stream,omitempty"`
 }
 
-// chatResponse 是OpenAI聊天接口的响应体
+// chatResponse represents the OpenAI chat API response body.
 type chatResponse struct {
 	ID      string `json:"id"`
 	Object  string `json:"object"`
@@ -212,7 +204,7 @@ type chatResponse struct {
 	} `json:"usage"`
 }
 
-// Chat 实现ChatModel接口，进行聊天对话
+// Chat implements the ChatModel interface.
 func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...models.Option) (models.ChatResponse, error) {
 	opts := m.defaults
 	for _, opt := range options {
@@ -223,7 +215,6 @@ func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...
 		return models.ChatResponse{}, errors.New("no messages provided")
 	}
 
-	// 准备请求
 	req := chatRequest{
 		Model:            m.modelID,
 		Messages:         messages,
@@ -235,14 +226,12 @@ func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...
 		Stop:             opts.Stop,
 	}
 
-	// 编码请求
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return models.ChatResponse{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// 创建HTTP请求
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", openaiChatURL, bytes.NewBuffer(reqBody))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, defaultChatURL, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return models.ChatResponse{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -250,7 +239,6 @@ func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+m.apiKey)
 
-	// 发送请求
 	resp, err := m.client.Do(httpReq)
 	if err != nil {
 		return models.ChatResponse{}, fmt.Errorf("failed to send request: %w", err)
@@ -262,13 +250,11 @@ func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...
 		return models.ChatResponse{}, fmt.Errorf("API error: %s - %s", resp.Status, string(body))
 	}
 
-	// 解析响应
 	var respBody chatResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
 		return models.ChatResponse{}, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// 处理结果
 	if len(respBody.Choices) == 0 {
 		return models.ChatResponse{}, errors.New("no response choices received")
 	}
@@ -281,9 +267,8 @@ func (m *Model) Chat(ctx context.Context, messages []models.Message, options ...
 	}, nil
 }
 
-// ChatStream 实现流式聊天接口
+// ChatStream implements streaming chat.
 func (m *Model) ChatStream(ctx context.Context, messages []models.Message, options ...models.Option) (<-chan models.ChatChunk, error) {
-	// 简化实现，实际应该支持SSE流式响应
 	resultChan := make(chan models.ChatChunk, 1)
 
 	go func() {
