@@ -1,14 +1,14 @@
-// Package models defines core interfaces and types for LLM interactions.
+// Package models 定义LLM交互的核心接口和类型
 package models
 
 import (
 	"context"
 )
 
-// Option defines a function type for configuring model options.
+// Option 定义模型调用的选项函数类型
 type Option func(*Options)
 
-// Options contains all model invocation options.
+// Options 包含所有模型调用选项
 type Options struct {
 	MaxTokens        int
 	Temperature      float64
@@ -19,58 +19,58 @@ type Options struct {
 	Timeout          int
 }
 
-// Completion represents an LLM completion response.
+// Completion 代表LLM的完成响应
 type Completion struct {
 	Text         string
 	FinishReason string
 	TokensUsed   int
 }
 
-// CompletionChunk represents a chunk of a streaming response.
+// CompletionChunk 代表流式响应的一个片段
 type CompletionChunk struct {
 	Text         string
 	FinishReason string
 	Done         bool
 }
 
-// LLM defines the base interface for large language models.
+// LLM 定义基础大语言模型接口
 type LLM interface {
-	// Generate produces completions for the given prompts.
+	// Generate 根据提示生成完成内容
 	Generate(ctx context.Context, prompts []string, options ...Option) ([]Completion, error)
 
-	// GenerateStream produces a streaming completion for a single prompt.
+	// GenerateStream 流式生成完成内容
 	GenerateStream(ctx context.Context, prompt string, options ...Option) (<-chan CompletionChunk, error)
 }
 
-// WithMaxTokens sets the maximum number of tokens to generate.
+// WithMaxTokens 设置最大生成token数
 func WithMaxTokens(n int) Option {
 	return func(o *Options) {
 		o.MaxTokens = n
 	}
 }
 
-// WithTemperature sets the sampling temperature.
+// WithTemperature 设置采样温度
 func WithTemperature(t float64) Option {
 	return func(o *Options) {
 		o.Temperature = t
 	}
 }
 
-// WithTopP sets the top-p sampling parameter.
+// WithTopP 设置Top-P采样参数
 func WithTopP(p float64) Option {
 	return func(o *Options) {
 		o.TopP = p
 	}
 }
 
-// WithStop sets the stop sequences.
+// WithStop 设置停止序列
 func WithStop(stop []string) Option {
 	return func(o *Options) {
 		o.Stop = stop
 	}
 }
 
-// DefaultOptions returns the default options.
+// DefaultOptions 返回默认选项
 func DefaultOptions() Options {
 	return Options{
 		MaxTokens:   100,

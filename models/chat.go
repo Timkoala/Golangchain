@@ -4,51 +4,51 @@ import (
 	"context"
 )
 
-// Role represents the role of a chat message.
+// Role 表示聊天消息的角色
 type Role string
 
 const (
-	// RoleSystem represents a system message.
+	// RoleSystem 表示系统消息
 	RoleSystem Role = "system"
-	// RoleUser represents a user message.
+	// RoleUser 表示用户消息
 	RoleUser Role = "user"
-	// RoleAssistant represents an assistant message.
+	// RoleAssistant 表示助手消息
 	RoleAssistant Role = "assistant"
-	// RoleFunction represents a function call result.
+	// RoleFunction 表示函数调用结果
 	RoleFunction Role = "function"
 )
 
-// Message represents a single message in a chat conversation.
+// Message 表示聊天对话中的单条消息
 type Message struct {
 	Role    Role   `json:"role"`
 	Content string `json:"content"`
 	Name    string `json:"name,omitempty"`
 }
 
-// ChatResponse represents a chat model response.
+// ChatResponse 表示聊天模型的响应
 type ChatResponse struct {
 	Message      Message
 	TokensUsed   int
 	FinishReason string
 }
 
-// ChatChunk represents a chunk of a streaming chat response.
+// ChatChunk 表示流式聊天响应的片段
 type ChatChunk struct {
 	Delta        Message
 	Done         bool
 	FinishReason string
 }
 
-// ChatModel defines the interface for chat models.
+// ChatModel 定义聊天模型接口
 type ChatModel interface {
-	// Chat sends messages and receives a response.
+	// Chat 发送消息并获取回复
 	Chat(ctx context.Context, messages []Message, options ...Option) (ChatResponse, error)
 
-	// ChatStream sends messages and receives a streaming response.
+	// ChatStream 发送消息并获取流式回复
 	ChatStream(ctx context.Context, messages []Message, options ...Option) (<-chan ChatChunk, error)
 }
 
-// NewSystemMessage creates a system message.
+// NewSystemMessage 创建一条系统消息
 func NewSystemMessage(content string) Message {
 	return Message{
 		Role:    RoleSystem,
@@ -56,7 +56,7 @@ func NewSystemMessage(content string) Message {
 	}
 }
 
-// NewUserMessage creates a user message.
+// NewUserMessage 创建一条用户消息
 func NewUserMessage(content string) Message {
 	return Message{
 		Role:    RoleUser,
@@ -64,7 +64,7 @@ func NewUserMessage(content string) Message {
 	}
 }
 
-// NewAssistantMessage creates an assistant message.
+// NewAssistantMessage 创建一条助手消息
 func NewAssistantMessage(content string) Message {
 	return Message{
 		Role:    RoleAssistant,
@@ -72,7 +72,7 @@ func NewAssistantMessage(content string) Message {
 	}
 }
 
-// NewFunctionMessage creates a function call result message.
+// NewFunctionMessage 创建一条函数调用结果消息
 func NewFunctionMessage(content, name string) Message {
 	return Message{
 		Role:    RoleFunction,

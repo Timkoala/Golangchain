@@ -1,4 +1,4 @@
-// Package utils provides utility functions for concurrent processing of LLM requests.
+// Package utils 提供LLM请求并发处理的工具函数
 package utils
 
 import (
@@ -9,19 +9,19 @@ import (
 	"golangchain/models"
 )
 
-// BatchProcessOptions configures batch processing operations.
+// BatchProcessOptions 配置批处理操作的选项
 type BatchProcessOptions struct {
-	// MaxConcurrent controls maximum concurrent requests.
+	// MaxConcurrent 控制最大并发数
 	MaxConcurrent int
-	// Timeout sets the timeout for the entire batch operation.
+	// Timeout 为整个批处理操作设置超时
 	Timeout time.Duration
-	// MaxRetries specifies the maximum number of retry attempts for failed requests.
+	// MaxRetries 指定失败请求的最大重试次数
 	MaxRetries int
-	// RetryDelay specifies the delay between retry attempts.
+	// RetryDelay 指定重试之间的延迟时间
 	RetryDelay time.Duration
 }
 
-// DefaultBatchOptions returns default batch processing options.
+// DefaultBatchOptions 返回默认的批处理选项
 func DefaultBatchOptions() BatchProcessOptions {
 	return BatchProcessOptions{
 		MaxConcurrent: 5,
@@ -31,7 +31,7 @@ func DefaultBatchOptions() BatchProcessOptions {
 	}
 }
 
-// BatchCompletionResult contains the result and error of a batch operation.
+// BatchCompletionResult 包含批处理的结果和错误
 type BatchCompletionResult struct {
 	Completion models.Completion
 	Error      error
@@ -39,7 +39,7 @@ type BatchCompletionResult struct {
 	Retries    int
 }
 
-// BatchProcess processes multiple LLM requests concurrently with retry support.
+// BatchProcess 并行处理多个LLM请求，支持重试机制
 func BatchProcess(
 	ctx context.Context,
 	llm models.LLM,
@@ -47,47 +47,47 @@ func BatchProcess(
 	options models.Option,
 	batchOptions ...BatchProcessOptions,
 ) []BatchCompletionResult {
-	// Use default options
+	// 使用默认选项
 	opts := DefaultBatchOptions()
 	if len(batchOptions) > 0 {
 		opts = batchOptions[0]
 	}
 
-	// Create context with timeout
+	// 创建带有超时的上下文
 	var cancel context.CancelFunc
 	if opts.Timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
 		defer cancel()
 	}
 
-	// Prepare results slice
+	// 准备结果切片
 	results := make([]BatchCompletionResult, len(prompts))
 
-	// Return early if no prompts
+	// 如果没有提示，直接返回
 	if len(prompts) == 0 {
 		return results
 	}
 
-	// Create semaphore for concurrency control
+	// 创建信号量控制并发
 	var sem chan struct{}
 	if opts.MaxConcurrent > 0 {
 		sem = make(chan struct{}, opts.MaxConcurrent)
 	}
 
-	// Use WaitGroup to wait for all goroutines
+	// 使用WaitGroup等待所有goroutine完成
 	var wg sync.WaitGroup
 
-	// Launch all requests
+	// 启动所有请求
 	for i, prompt := range prompts {
 		wg.Add(1)
 
-		// Capture variables for goroutine
+		// 封装参数，以便在goroutine中使用
 		i, prompt := i, prompt
 
 		go func() {
 			defer wg.Done()
 
-			// Acquire semaphore if concurrency limit is set
+			// 如果设置了最大并发数，获取信号量
 			if sem != nil {
 				select {
 				case sem <- struct{}{}:
@@ -101,19 +101,19 @@ func BatchProcess(
 				}
 			}
 
-			// Execute with retry logic
+			// 执行带重试的请求
 			result := executeWithRetry(ctx, llm, prompt, options, opts.MaxRetries, opts.RetryDelay)
 			result.Index = i
 			results[i] = result
 		}()
 	}
 
-	// Wait for all requests to complete
+	// 等待所有请求完成
 	wg.Wait()
 	return results
 }
 
-// executeWithRetry executes a single LLM request with retry support.
+// executeWithRetry 执行单个LLM请求，支持重试
 func executeWithRetry(
 	ctx context.Context,
 	llm models.LLM,
@@ -126,7 +126,7 @@ func executeWithRetry(
 	retries := 0
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		// Check context before each attempt
+		// 每次尝试前检查上下文
 		select {
 		case <-ctx.Done():
 			return BatchCompletionResult{
@@ -136,7 +136,7 @@ func executeWithRetry(
 		default:
 		}
 
-		// Execute LLM request
+		// 执行LLM请求
 		completions, err := llm.Generate(ctx, []string{prompt}, options)
 		if err == nil && len(completions) > 0 {
 			return BatchCompletionResult{
@@ -148,9 +148,9 @@ func executeWithRetry(
 		lastErr = err
 		retries = attempt
 
-		// Don't sleep after the last attempt
+		// 最后一次尝试后不需要等待
 		if attempt < maxRetries {
-			// Exponential backoff
+			// 指数退避
 			delay := retryDelay * time.Duration(1<<uint(attempt))
 			select {
 			case <-ctx.Done():
@@ -169,26 +169,26 @@ func executeWithRetry(
 	}
 }
 
-// PerformanceComparison compares serial and parallel processing performance.
+// PerformanceComparison 比较串行和并行处理的性能差异
 func PerformanceComparison(
 	ctx context.Context,
 	llm models.LLM,
 	prompts []string,
 	options models.Option,
 ) (serialTime, parallelTime time.Duration, speedup float64) {
-	// Serial processing
+	// 串行处理
 	serialStart := time.Now()
 	for _, prompt := range prompts {
 		_, _ = llm.Generate(ctx, []string{prompt}, options)
 	}
 	serialTime = time.Since(serialStart)
 
-	// Parallel processing
+	// 并行处理
 	parallelStart := time.Now()
 	BatchProcess(ctx, llm, prompts, options)
 	parallelTime = time.Since(parallelStart)
 
-	// Calculate speedup
+	// 计算加速比
 	if parallelTime > 0 {
 		speedup = float64(serialTime) / float64(parallelTime)
 	}
