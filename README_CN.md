@@ -34,8 +34,16 @@ golangchain/
 ├── models/                 # 模型抽象层
 │   ├── llm.go             # 基础 LLM 接口定义
 │   ├── chat.go            # 聊天模型接口定义
-│   └── openai/            # OpenAI 提供商实现
+│   ├── openai/            # OpenAI 提供商实现
+│   │   └── model.go
+│   ├── anthropic/         # Anthropic Claude 提供商实现
+│   │   └── model.go
+│   └── google/            # Google Gemini 提供商实现
 │       └── model.go
+├── agent/                  # Agent 框架
+│   └── agent.go           # Agent 核心实现（支持工具调用）
+├── prompt/                 # Prompt 模板系统
+│   └── template.go        # 模板引擎和构建器
 ├── utils/                  # 工具函数
 │   └── concurrency.go     # BatchProcess 并行引擎（含重试逻辑）
 └── go.mod                 # 零外部依赖
@@ -178,11 +186,14 @@ fmt.Println(response.Message.Content)
 
 ## 发展路线
 
-- [ ] 更多提供商支持（Anthropic Claude、本地模型）
+- [x] 更多提供商支持（Anthropic Claude、Google Gemini）
 - [ ] 向量存储集成
 - [ ] 文档加载器
-- [ ] Agent 框架
-- [ ] Prompt 模板
+- [x] Agent 框架（支持工具调用）
+- [x] Prompt 模板系统
+- [ ] 本地模型支持
+- [ ] 记忆系统
+- [ ] RAG（检索增强生成）
 
 ## 贡献
 
