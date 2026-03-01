@@ -44,6 +44,10 @@ golangchain/
 │   └── agent.go           # Agent 核心实现（支持工具调用）
 ├── prompt/                 # Prompt 模板系统
 │   └── template.go        # 模板引擎和构建器
+├── memory/                 # 记忆系统
+│   └── memory.go          # 缓冲记忆、摘要记忆、对话记忆
+├── rag/                    # RAG 检索增强生成
+│   └── retriever.go       # 简单检索器、向量检索器
 ├── utils/                  # 工具函数
 │   └── concurrency.go     # BatchProcess 并行引擎（含重试逻辑）
 └── go.mod                 # 零外部依赖
@@ -192,8 +196,8 @@ fmt.Println(response.Message.Content)
 - [x] Agent 框架（支持工具调用）
 - [x] Prompt 模板系统
 - [ ] 本地模型支持
-- [ ] 记忆系统
-- [ ] RAG（检索增强生成）
+- [x] 记忆系统（缓冲记忆、摘要记忆、对话记忆）
+- [x] RAG 检索增强生成（简单检索器、向量检索器）
 
 ## 贡献
 

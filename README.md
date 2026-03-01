@@ -4,48 +4,60 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
 
-A lightweight, high-performance LLM application framework written in Go, inspired by [LangChain](https://github.com/langchain-ai/langchain).
+一个用 Go 语言编写的轻量级、高性能 LLM 应用框架，灵感来自 [LangChain](https://github.com/langchain-ai/langchain)。
 
-[中文文档](README_CN.md)
+[English](README_EN.md)
 
-## Why GoLangChain?
+## 为什么选择 GoLangChain？
 
-While Python LangChain is powerful, it comes with significant overhead in production environments. GoLangChain addresses these pain points:
+Python LangChain 功能强大，但在生产环境中存在显著的性能开销。GoLangChain 解决了这些痛点：
 
-| Aspect | Python LangChain | GoLangChain |
+| 对比项 | Python LangChain | GoLangChain |
 |--------|------------------|-------------|
-| Memory Footprint | ~200MB+ | ~80MB (60% reduction) |
-| Cold Start Time | 2-3 seconds | < 200ms |
-| Concurrent Requests | Requires asyncio/threading | Native goroutines |
-| Dependencies | Complex dependency tree | Zero external dependencies |
-| Deployment | Virtual environment required | Single binary |
+| 内存占用 | 约 200MB+ | 约 80MB（降低 60%）|
+| 冷启动时间 | 2-3 秒 | < 200ms |
+| 并发请求 | 需要 asyncio/threading | 原生 goroutine |
+| 依赖管理 | 复杂的依赖树 | 零外部依赖 |
+| 部署方式 | 需要虚拟环境 | 单一二进制文件 |
 
-### Key Advantages
+### 核心优势
 
-- **Native Concurrency**: Built on goroutines and channels, achieving 4x+ throughput improvement for parallel LLM requests without external async frameworks
-- **Zero Dependencies**: Uses only Go standard library, eliminating supply chain risks and simplifying deployment
-- **Production Ready**: Single binary compilation, cross-platform support, minimal resource consumption
-- **Type Safety**: Compile-time error detection through Go's static type system
+- **原生并发**：基于 goroutines 和 channels 构建，并行 LLM 请求吞吐量提升 4 倍以上，无需额外的异步框架
+- **零依赖**：仅使用 Go 标准库，消除供应链风险，简化部署流程
+- **生产就绪**：单一二进制编译，跨平台支持，资源消耗极低
+- **类型安全**：通过 Go 静态类型系统实现编译时错误检测
 
-## Architecture
+## 项目结构
 
 ```
 golangchain/
-├── models/                 # Model abstraction layer
-│   ├── llm.go             # Base LLM interface
-│   ├── chat.go            # Chat model interface
-│   └── openai/            # OpenAI provider implementation
+├── models/                 # 模型抽象层
+│   ├── llm.go             # 基础 LLM 接口定义
+│   ├── chat.go            # 聊天模型接口定义
+│   ├── openai/            # OpenAI 提供商实现
+│   │   └── model.go
+│   ├── anthropic/         # Anthropic Claude 提供商实现
+│   │   └── model.go
+│   └── google/            # Google Gemini 提供商实现
 │       └── model.go
-├── utils/                  # Utilities
-│   └── concurrency.go     # BatchProcess engine with retry logic
-└── go.mod                 # Zero external dependencies
+├── agent/                  # Agent 框架
+│   └── agent.go           # Agent 核心实现（支持工具调用）
+├── prompt/                 # Prompt 模板系统
+│   └── template.go        # 模板引擎和构建器
+├── memory/                 # 记忆系统
+│   └── memory.go          # 缓冲记忆、摘要记忆、对话记忆
+├── rag/                    # RAG 检索增强生成
+│   └── retriever.go       # 简单检索器、向量检索器
+├── utils/                  # 工具函数
+│   └── concurrency.go     # BatchProcess 并行引擎（含重试逻辑）
+└── go.mod                 # 零外部依赖
 ```
 
-## Core Components
+## 核心组件
 
-### LLM Interface
+### LLM 接口
 
-The framework defines a provider-agnostic interface for LLM interactions:
+框架定义了与提供商无关的 LLM 交互接口：
 
 ```go
 type LLM interface {
@@ -54,7 +66,7 @@ type LLM interface {
 }
 ```
 
-### Chat Model Interface
+### 聊天模型接口
 
 ```go
 type ChatModel interface {
@@ -63,12 +75,12 @@ type ChatModel interface {
 }
 ```
 
-### BatchProcess Engine
+### BatchProcess 并行处理引擎
 
-High-performance parallel processing with controlled concurrency and intelligent retry:
+高性能并行处理，支持可控并发和智能重试：
 
 ```go
-// Process multiple prompts concurrently
+// 并发处理多个提示
 results := utils.BatchProcess(ctx, llm, prompts, 
     models.WithMaxTokens(100),
     utils.BatchProcessOptions{
@@ -79,15 +91,15 @@ results := utils.BatchProcess(ctx, llm, prompts,
 )
 ```
 
-## Quick Start
+## 快速开始
 
-### Installation
+### 安装
 
 ```bash
 go get github.com/Timkoala/Golangchain
 ```
 
-### Basic Usage
+### 基础用法
 
 ```go
 package main
@@ -102,7 +114,7 @@ import (
 )
 
 func main() {
-    // Create model instance
+    // 创建模型实例
     model := openai.NewModel(
         "your-api-key",
         "gpt-3.5-turbo-instruct",
@@ -110,19 +122,19 @@ func main() {
         models.WithTemperature(0.7),
     )
     
-    // Single request
+    // 单个请求
     ctx := context.Background()
-    completions, err := model.Generate(ctx, []string{"Explain quantum computing"})
+    completions, err := model.Generate(ctx, []string{"解释量子计算"})
     if err != nil {
         panic(err)
     }
     fmt.Println(completions[0].Text)
     
-    // Batch processing with concurrency control
+    // 批量并发处理
     prompts := []string{
-        "Explain machine learning",
-        "What is blockchain?",
-        "Describe cloud computing",
+        "解释机器学习",
+        "什么是区块链？",
+        "描述云计算",
     }
     
     results := utils.BatchProcess(ctx, model, prompts, 
@@ -132,20 +144,20 @@ func main() {
     
     for i, result := range results {
         if result.Error != nil {
-            fmt.Printf("Prompt %d failed: %v\n", i, result.Error)
+            fmt.Printf("提示 %d 失败: %v\n", i, result.Error)
         } else {
-            fmt.Printf("Prompt %d: %s\n", i, result.Completion.Text)
+            fmt.Printf("提示 %d: %s\n", i, result.Completion.Text)
         }
     }
 }
 ```
 
-### Chat API
+### 聊天 API
 
 ```go
 messages := []models.Message{
-    models.NewSystemMessage("You are a helpful assistant."),
-    models.NewUserMessage("What is Go?"),
+    models.NewSystemMessage("你是一个有帮助的助手。"),
+    models.NewUserMessage("什么是 Go 语言？"),
 }
 
 response, err := model.Chat(ctx, messages)
@@ -155,44 +167,47 @@ if err != nil {
 fmt.Println(response.Message.Content)
 ```
 
-## Configuration Options
+## 配置选项
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `WithMaxTokens(n)` | Maximum tokens to generate | 100 |
-| `WithTemperature(t)` | Sampling temperature (0.0-2.0) | 0.7 |
-| `WithTopP(p)` | Top-p sampling parameter | 1.0 |
-| `WithStop([]string)` | Stop sequences | nil |
+| 选项 | 描述 | 默认值 |
+|------|------|--------|
+| `WithMaxTokens(n)` | 最大生成 token 数 | 100 |
+| `WithTemperature(t)` | 采样温度 (0.0-2.0) | 0.7 |
+| `WithTopP(p)` | Top-p 采样参数 | 1.0 |
+| `WithStop([]string)` | 停止序列 | nil |
 
-## Performance Benchmarks
+## 性能基准测试
 
-Benchmark comparing serial vs parallel processing of 10 LLM requests:
+10 个 LLM 请求的串行与并行处理对比：
 
 ```
-Serial Processing:  ~15.2s
-Parallel Processing: ~3.1s  (5 concurrent)
-Speedup: 4.9x
+串行处理:  约 15.2s
+并行处理:  约 3.1s  (5 并发)
+加速比: 4.9x
 ```
 
-The speedup approaches the concurrency limit, demonstrating efficient goroutine utilization.
+加速比接近并发限制，证明了 goroutine 的高效利用。
 
-## Roadmap
+## 发展路线
 
-- [ ] Additional providers (Anthropic Claude, local models)
-- [ ] Vector store integration
-- [ ] Document loaders
-- [ ] Agent framework
-- [ ] Prompt templates
+- [x] 更多提供商支持（Anthropic Claude、Google Gemini）
+- [ ] 向量存储集成
+- [ ] 文档加载器
+- [x] Agent 框架（支持工具调用）
+- [x] Prompt 模板系统
+- [ ] 本地模型支持
+- [x] 记忆系统（缓冲记忆、摘要记忆、对话记忆）
+- [x] RAG 检索增强生成（简单检索器、向量检索器）
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+欢迎贡献！请随时提交 Issue 和 Pull Request。
 
-## License
+## 许可证
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT 许可证 - 详见 [LICENSE](LICENSE)。
 
-## Acknowledgments
+## 致谢
 
-- [LangChain](https://github.com/langchain-ai/langchain) for the architectural inspiration
-- The Go community for excellent standard library support
+- [LangChain](https://github.com/langchain-ai/langchain) 提供的架构灵感
+- Go 社区提供的优秀标准库支持
