@@ -6,7 +6,7 @@
 
 一个用 Go 语言编写的轻量级、高性能 LLM 应用框架，灵感来自 [LangChain](https://github.com/langchain-ai/langchain)。
 
-[English](README.md)
+[English](README_EN.md)
 
 ## 为什么选择 GoLangChain？
 
@@ -166,6 +166,181 @@ if err != nil {
 }
 fmt.Println(response.Message.Content)
 ```
+
+### Agent 框架（工具调用）
+
+```go
+import "golangchain/agent"
+
+// 定义工具
+tools := []agent.Tool{
+    {
+        Name:        "calculator",
+        Description: "执行数学计算",
+        Execute: func(input string) (string, error) {
+            // 实现计算逻辑
+            return "结果", nil
+        },
+    },
+}
+
+// 创建 Agent
+ag := agent.NewAgent(model, tools)
+
+// 执行任务
+result, err := ag.Execute(ctx, "计算 2+2 的结果")
+if err != nil {
+    panic(err)
+}
+fmt.Println(result)
+```
+
+### Prompt 模板系统
+
+```go
+import "golangchain/prompt"
+
+// 创建模板
+template := prompt.NewTemplate(
+    "你是一个{{role}}。用户问题：{{question}}",
+)
+
+// 渲染模板
+rendered, err := template.Render(map[string]interface{}{
+    "role":     "Python 专家",
+    "question": "如何优化列表推导式？",
+})
+if err != nil {
+    panic(err)
+}
+fmt.Println(rendered)
+
+// 使用模板构建器
+builder := prompt.NewPromptBuilder()
+builder.AddSystemMessage("你是一个有帮助的助手")
+builder.AddUserMessage("{{question}}")
+prompt := builder.Build()
+```
+
+### 记忆系统
+
+```go
+import "golangchain/memory"
+
+// 缓冲记忆：保留最近 N 条消息
+bufferMem := memory.NewBufferMemory(10)
+bufferMem.Add(models.NewUserMessage("你好"))
+bufferMem.Add(models.NewAssistantMessage("你好！有什么我可以帮助的吗？"))
+
+// 对话记忆：支持消息计数和摘要
+convMem := memory.NewConversationMemory(100, 50)
+convMem.Add(models.NewUserMessage("什么是 Go？"))
+count := convMem.GetMessageCount()
+fmt.Printf("对话消息数：%d\n", count)
+
+// 获取历史消息
+messages := bufferMem.Get()
+for _, msg := range messages {
+    fmt.Printf("[%s]: %s\n", msg.Role, msg.Content)
+}
+```
+
+### RAG 检索增强生成
+
+```go
+import "golangchain/rag"
+
+// 创建检索器
+retriever := rag.NewSimpleRetriever()
+
+// 添加文档
+docs := []rag.Document{
+    {
+        ID:      "doc1",
+        Content: "Go 是一门编译型编程语言，具有高效的并发能力",
+    },
+    {
+        ID:      "doc2",
+        Content: "Python 是一门解释型编程语言，易于学习和使用",
+    },
+}
+
+for _, doc := range docs {
+    retriever.Add(doc)
+}
+
+// 搜索相关文档
+results, err := retriever.Search("Go 编程语言", 5)
+if err != nil {
+    panic(err)
+}
+
+for _, result := range results {
+    fmt.Printf("文档 %s (相似度: %.2f): %s\n", 
+        result.Document.ID, result.Score, result.Document.Content)
+}
+
+// 使用向量检索器获得更好的语义搜索
+vectorRetriever := rag.NewVectorRetriever()
+for _, doc := range docs {
+    vectorRetriever.Add(doc)
+}
+
+results, _ = vectorRetriever.Search("编程", 5)
+```
+
+### 多提供商支持
+
+```go
+import (
+    "golangchain/models/openai"
+    "golangchain/models/anthropic"
+    "golangchain/models/google"
+)
+
+// OpenAI
+openaiModel := openai.NewModel("your-openai-key", "gpt-4")
+
+// Anthropic Claude
+claudeModel := anthropic.NewModel("your-anthropic-key", "claude-3-opus-20240229")
+
+// Google Gemini
+geminiModel := google.NewModel("your-google-key", "gemini-pro")
+
+// 统一接口调用
+ctx := context.Background()
+response, _ := openaiModel.Chat(ctx, messages)
+response, _ = claudeModel.Chat(ctx, messages)
+response, _ = geminiModel.Chat(ctx, messages)
+```
+
+## 技术特色
+
+### 🚀 高性能并发引擎
+
+基于 Go 原生 goroutines 和 channels 构建，无需外部异步框架：
+
+- **信号量控制**：精确控制并发数量，避免 API 限流
+- **智能重试**：指数退避策略，自动处理临时错误
+- **上下文传播**：完整支持 context 取消和超时
+
+### 🔧 模块化架构
+
+- **提供商无关**：统一 LLM/ChatModel 接口，轻松切换模型
+- **可插拔工具**：Agent 工具系统支持自定义扩展
+- **灵活记忆**：多种记忆策略满足不同场景需求
+
+### 🛡️ 生产级特性
+
+- **零外部依赖**：仅使用 Go 标准库，消除供应链风险
+- **线程安全**：所有组件均支持并发访问
+- **类型安全**：编译时错误检测，减少运行时异常
+
+### 📦 部署友好
+
+- **单一二进制**：无需安装运行时环境
+- **跨平台支持**：Linux、macOS、Windows 全平台兼容
+- **容器优化**：最小镜像体积，快速启动
 
 ## 配置选项
 
